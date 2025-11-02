@@ -7,13 +7,14 @@ import MonthView from './components/MonthView';
 import WeekView from './components/WeekView';
 import DayView from './components/DayView';
 import EventModal from './components/EventModal';
-import { getMonth, getYear, setMonth, setYear, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from './utils/dateUtils';
+import { getMonth, getYear, setMonth, setYear, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, parseISO, format } from './utils/dateUtils';
 
 const initialEvents: CalendarEvent[] = [
   { id: '1', title: 'Design Review', date: '2024-07-15', startTime: '10:00', endTime: '11:00', color: 'blue' },
   { id: '2', title: 'Team Standup', date: '2024-07-16', startTime: '09:00', endTime: '09:30', color: 'green' },
   { id: '3', title: 'Project Kickoff', date: '2024-07-16', startTime: '14:00', endTime: '15:00', color: 'indigo' },
   { id: '4', title: 'Dentist Appointment', date: '2024-07-20', startTime: '11:00', endTime: '12:00', color: 'red' },
+  { id: '5', title: 'Weekly All-Hands', date: '2024-07-03', startTime: '11:00', endTime: '12:00', color: 'purple', recurrence: 'weekly' },
 ];
 
 type EventsAction =
@@ -66,10 +67,13 @@ const App: React.FC = () => {
   }, []);
   
   const openModalForExistingEvent = useCallback((event: CalendarEvent) => {
-    setSelectedEvent(event);
+    const originalId = event.id.split('-')[0];
+    const originalEvent = events.find(e => e.id === originalId);
+
+    setSelectedEvent(originalEvent || event);
     setModalDate(null);
     setIsModalOpen(true);
-  }, []);
+  }, [events]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
@@ -87,18 +91,109 @@ const App: React.FC = () => {
   }, [closeModal]);
 
   const handleEventUpdate = useCallback((event: CalendarEvent) => {
-    dispatch({ type: 'UPDATE', payload: event });
-  }, []);
+    const originalId = event.id.split('-')[0];
+    const originalEvent = events.find(e => e.id === originalId);
+
+    if (originalEvent && originalEvent.recurrence) {
+      // If a recurring event instance is dragged, update the start date of the whole series
+      const updatedSeries = { ...originalEvent, date: event.date };
+       dispatch({ type: 'UPDATE', payload: updatedSeries });
+    } else {
+      dispatch({ type: 'UPDATE', payload: event });
+    }
+  }, [events]);
 
   const handleDeleteEvent = useCallback((id: string) => {
     dispatch({ type: 'DELETE', payload: id });
     closeModal();
   }, [closeModal]);
+  
+  const visibleEvents = useMemo(() => {
+    let viewStartDate: Date;
+    let viewEndDate: Date;
+
+    if (view === 'month') {
+        const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        viewStartDate = new Date(firstDay);
+        viewStartDate.setDate(viewStartDate.getDate() - firstDay.getDay());
+        
+        const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        viewEndDate = new Date(lastDay);
+        viewEndDate.setDate(viewEndDate.getDate() + (6 - lastDay.getDay()));
+    } else if (view === 'week') {
+        viewStartDate = new Date(currentDate);
+        viewStartDate.setDate(currentDate.getDate() - currentDate.getDay());
+        viewEndDate = new Date(viewStartDate);
+        viewEndDate.setDate(viewEndDate.getDate() + 6);
+    } else { // day view
+        viewStartDate = new Date(currentDate);
+        viewEndDate = new Date(currentDate);
+    }
+    viewStartDate.setHours(0, 0, 0, 0);
+    viewEndDate.setHours(23, 59, 59, 999);
+
+    const expandedEvents: CalendarEvent[] = [];
+    const recurrenceLimit = new Date(viewEndDate);
+    recurrenceLimit.setFullYear(recurrenceLimit.getFullYear() + 1);
+
+    events.forEach(event => {
+      if (!event.recurrence || event.recurrence === 'none') {
+        const eventDate = parseISO(event.date);
+        if (eventDate >= viewStartDate && eventDate <= viewEndDate) {
+          expandedEvents.push(event);
+        }
+      } else {
+        const startDate = parseISO(event.date);
+        let cursorDate = new Date(startDate);
+        const originalDayOfMonth = startDate.getDate();
+
+        while(cursorDate < startDate && cursorDate < viewEndDate) {
+           if (event.recurrence === 'daily') cursorDate.setDate(cursorDate.getDate() + 1);
+           else if (event.recurrence === 'weekly') cursorDate.setDate(cursorDate.getDate() + 7);
+           else if (event.recurrence === 'monthly') cursorDate.setMonth(cursorDate.getMonth() + 1);
+           else if (event.recurrence === 'annually') cursorDate.setFullYear(cursorDate.getFullYear() + 1);
+        }
+
+        while (cursorDate <= viewEndDate && cursorDate <= recurrenceLimit) {
+            if (cursorDate >= viewStartDate) {
+                expandedEvents.push({
+                    ...event,
+                    date: format(cursorDate, 'yyyy-MM-dd'),
+                    id: `${event.id}-${format(cursorDate, 'yyyyMMdd')}`,
+                });
+            }
+
+            switch(event.recurrence) {
+                case 'daily':
+                    cursorDate.setDate(cursorDate.getDate() + 1);
+                    break;
+                case 'weekly':
+                    cursorDate.setDate(cursorDate.getDate() + 7);
+                    break;
+                case 'monthly':
+                    const currentMonth = cursorDate.getMonth();
+                    cursorDate.setMonth(currentMonth + 1);
+                    // If we skipped a month (e.g., Jan 31 to Mar), go to last day of Feb
+                    if (cursorDate.getMonth() === currentMonth + 2) {
+                        cursorDate.setDate(0);
+                    } else {
+                       cursorDate.setDate(originalDayOfMonth);
+                    }
+                    break;
+                case 'annually':
+                    cursorDate.setFullYear(cursorDate.getFullYear() + 1);
+                    break;
+            }
+        }
+      }
+    });
+    return expandedEvents;
+  }, [events, currentDate, view]);
 
   const renderView = useMemo(() => {
     const props = { 
         currentDate, 
-        events, 
+        events: visibleEvents, 
         onEventClick: openModalForExistingEvent, 
         onCellClick: openModalForNewEvent,
         onEventUpdate: handleEventUpdate
@@ -113,7 +208,7 @@ const App: React.FC = () => {
       default:
         return <MonthView {...props} />;
     }
-  }, [view, currentDate, events, openModalForExistingEvent, openModalForNewEvent, handleEventUpdate]);
+  }, [view, currentDate, visibleEvents, openModalForExistingEvent, openModalForNewEvent, handleEventUpdate]);
 
   return (
     <div className="flex h-screen bg-white text-gray-700 font-sans">
