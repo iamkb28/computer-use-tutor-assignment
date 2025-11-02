@@ -1,6 +1,16 @@
+
 import React, { useState } from 'react';
-import { useCalendar } from '../hooks/useCalendar.js';
-import { isSameDay, getMonth, format } from '../utils/dateUtils.js';
+import { useCalendar } from '../hooks/useCalendar';
+import { CalendarEvent } from '../types';
+import { isSameDay, getMonth, format } from '../utils/dateUtils';
+
+interface MonthViewProps {
+  currentDate: Date;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onCellClick: (date: Date) => void;
+  onEventUpdate: (event: CalendarEvent) => void;
+}
 
 const colorClasses = {
   red: 'bg-red-200 border-red-500 text-red-800',
@@ -11,21 +21,21 @@ const colorClasses = {
   orange: 'bg-orange-200 border-orange-500 text-orange-800',
 };
 
-const MonthView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
+const MonthView: React.FC<MonthViewProps> = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
   const { calendarWeeks, daysOfWeek } = useCalendar(currentDate, 'month');
   const today = new Date();
-  const [draggedEventId, setDraggedEventId] = useState(null);
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
 
-  const handleDragStart = (e, event) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, event: CalendarEvent) => {
     e.dataTransfer.setData('eventId', event.id);
     setDraggedEventId(event.id);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e, day) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, day: Date) => {
     e.preventDefault();
     const eventId = e.dataTransfer.getData('eventId');
     const eventToUpdate = events.find(ev => ev.id === eventId);
