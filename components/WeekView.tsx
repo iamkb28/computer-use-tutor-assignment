@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
-import { useCalendar } from '../hooks/useCalendar.js';
-import { isSameDay, format, parseISO, getHours, getMinutes } from '../utils/dateUtils.js';
+import { useCalendar } from '../hooks/useCalendar';
+import { CalendarEvent } from '../types';
+import { isSameDay, format, parseISO, getHours, getMinutes } from '../utils/dateUtils';
+
+interface WeekViewProps {
+  currentDate: Date;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onCellClick: (date: Date) => void;
+  onEventUpdate: (event: CalendarEvent) => void;
+}
 
 const colorClasses = {
   red: { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-800' },
@@ -12,14 +21,14 @@ const colorClasses = {
 };
 
 
-const WeekView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
+const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
   const { weekDays } = useCalendar(currentDate, 'week');
   const today = new Date();
   const timeSlots = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
-  const [draggedEvent, setDraggedEvent] = useState(null);
-  const HOUR_HEIGHT = 48; // 48px per hour
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
+  const HOUR_HEIGHT = 60; // 60px per hour
 
-  const getEventPosition = (event) => {
+  const getEventPosition = (event: CalendarEvent) => {
     const [startHour, startMinute] = event.startTime.split(':').map(Number);
     const [endHour, endMinute] = event.endTime.split(':').map(Number);
     const top = (startHour + startMinute / 60) * HOUR_HEIGHT;
@@ -28,27 +37,41 @@ const WeekView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdat
     return { top, height };
   };
 
-  const handleDragStart = (e, event) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, event: CalendarEvent) => {
     e.dataTransfer.setData('eventId', event.id);
-    setDraggedEvent(event);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    e.dataTransfer.setData('offsetY', String(offsetY));
+    setDraggedEventId(event.id);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e, day) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, day: Date) => {
     e.preventDefault();
-    if (!draggedEvent) return;
+    const eventId = e.dataTransfer.getData('eventId');
+    const offsetY = parseFloat(e.dataTransfer.getData('offsetY')) || 0;
 
-    const [startH, startM] = draggedEvent.startTime.split(':').map(Number);
-    const [endH, endM] = draggedEvent.endTime.split(':').map(Number);
+    const eventToUpdate = events.find(ev => ev.id === eventId);
+    if (!eventToUpdate) {
+        setDraggedEventId(null);
+        return;
+    }
+
+    const [startH, startM] = eventToUpdate.startTime.split(':').map(Number);
+    const [endH, endM] = eventToUpdate.endTime.split(':').map(Number);
     const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
 
     const rect = e.currentTarget.getBoundingClientRect();
     const dropY = e.clientY - rect.top;
+    
+    // The initial click offset should not influence the final position, 
+    // only the cursor's absolute position relative to the drop container.
+    const correctedDropY = Math.max(0, dropY - offsetY);
 
-    const totalMinutes = (dropY / HOUR_HEIGHT) * 60;
+    const totalMinutes = (correctedDropY / HOUR_HEIGHT) * 60;
     const snappedMinutes = Math.round(totalMinutes / 15) * 15;
     const newStartHour = Math.floor(snappedMinutes / 60);
     const newStartMinute = snappedMinutes % 60;
@@ -57,21 +80,24 @@ const WeekView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdat
     const newEndHour = Math.floor(newEndTotalMinutes / 60);
     const newEndMinute = newEndTotalMinutes % 60;
 
-    if (newEndHour > 24 || (newEndHour === 24 && newEndMinute > 0)) return;
+    if (newEndHour > 24 || (newEndHour === 24 && newEndMinute > 0)) {
+        setDraggedEventId(null);
+        return;
+    }
 
-    const updatedEvent = {
-      ...draggedEvent,
+    const updatedEvent: CalendarEvent = {
+      ...eventToUpdate,
       date: format(day, 'yyyy-MM-dd'),
       startTime: `${String(newStartHour).padStart(2, '0')}:${String(newStartMinute).padStart(2, '0')}`,
       endTime: `${String(newEndHour).padStart(2, '0')}:${String(newEndMinute).padStart(2, '0')}`,
     };
 
     onEventUpdate(updatedEvent);
-    setDraggedEvent(null);
+    setDraggedEventId(null);
   };
 
   const handleDragEnd = () => {
-    setDraggedEvent(null);
+    setDraggedEventId(null);
   };
 
   return (
@@ -90,8 +116,13 @@ const WeekView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdat
       <div className="flex-grow grid grid-cols-[auto_1fr]">
         {/* Time column */}
         <div className="w-16">
-          {timeSlots.map(time => (
-            <div key={time} className="h-12 text-right pr-2 text-xs text-gray-400 border-r border-gray-200 relative -top-2">
+          {timeSlots.map((time, index) => (
+            <div
+              key={time}
+              className={`h-[60px] text-right pr-2 text-xs text-gray-400 border-r border-gray-200 ${
+                index > 0 ? 'relative -top-2' : ''
+              }`}
+            >
               {time}
             </div>
           ))}
@@ -110,7 +141,7 @@ const WeekView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdat
                  {timeSlots.map((_, index) => (
                     <div 
                         key={index} 
-                        className="h-12 border-b border-gray-200"
+                        className="h-[60px] border-b border-gray-200"
                         onClick={() => {
                             const clickedDate = new Date(day);
                             clickedDate.setHours(index, 0, 0, 0);
@@ -128,7 +159,7 @@ const WeekView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdat
                       onDragStart={(e) => handleDragStart(e, event)}
                       onDragEnd={handleDragEnd}
                       onClick={() => onEventClick(event)}
-                      className={`absolute left-1 right-1 p-1 rounded border-l-4 ${draggedEvent?.id === event.id ? 'opacity-50 cursor-grabbing' : 'cursor-pointer'} ${color.bg} ${color.border} ${color.text}`}
+                      className={`absolute left-1 right-1 p-1 rounded border-l-4 ${draggedEventId === event.id ? 'opacity-50 cursor-grabbing' : 'cursor-pointer'} ${color.bg} ${color.border} ${color.text}`}
                       style={{ top: `${top}px`, height: `${height}px`, zIndex: 10 }}
                     >
                       <p className="font-semibold text-xs">{event.title}</p>
