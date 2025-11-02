@@ -1,26 +1,15 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { CalendarEvent, RecurrenceFrequency } from '../types';
-import { format, parseISO } from '../utils/dateUtils';
+import { format, parseISO } from '../utils/dateUtils.js';
 
-interface EventModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (event: Omit<CalendarEvent, 'id'> & { id?: string }) => void;
-  onDelete: (id: string) => void;
-  event: CalendarEvent | null;
-  date: Date | null;
-}
+const colors = ['blue', 'green', 'indigo', 'purple', 'orange', 'red'];
 
-const colors: Array<CalendarEvent['color']> = ['blue', 'green', 'indigo', 'purple', 'orange', 'red'];
-
-const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, onDelete, event, date }) => {
+const EventModal = ({ isOpen, onClose, onSave, onDelete, event, date }) => {
   const [title, setTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('11:00');
-  const [color, setColor] = useState<CalendarEvent['color']>('blue');
-  const [recurrence, setRecurrence] = useState<RecurrenceFrequency>('none');
+  const [color, setColor] = useState('blue');
+  const [recurrence, setRecurrence] = useState('none');
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   useEffect(() => {
@@ -112,7 +101,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, onDele
           <div className="flex items-center space-x-4">
              <select
               value={recurrence}
-              onChange={(e) => setRecurrence(e.target.value as RecurrenceFrequency)}
+              onChange={(e) => setRecurrence(e.target.value)}
               className="border border-gray-300 rounded-md p-2 w-full"
             >
               <option value="none">Does not repeat</option>
