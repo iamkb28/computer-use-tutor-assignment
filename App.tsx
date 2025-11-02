@@ -9,21 +9,16 @@ import DayView from './components/DayView';
 import EventModal from './components/EventModal';
 import { getMonth, getYear, setMonth, setYear, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, parseISO, format } from './utils/dateUtils';
 
-const initialEvents: CalendarEvent[] = [
-  { id: '1', title: 'Design Review', date: '2024-07-15', startTime: '10:00', endTime: '11:00', color: 'blue' },
-  { id: '2', title: 'Team Standup', date: '2024-07-16', startTime: '09:00', endTime: '09:30', color: 'green' },
-  { id: '3', title: 'Project Kickoff', date: '2024-07-16', startTime: '14:00', endTime: '15:00', color: 'indigo' },
-  { id: '4', title: 'Dentist Appointment', date: '2024-07-20', startTime: '11:00', endTime: '12:00', color: 'red' },
-  { id: '5', title: 'Weekly All-Hands', date: '2024-07-03', startTime: '11:00', endTime: '12:00', color: 'purple', recurrence: 'weekly' },
-];
-
 type EventsAction =
+  | { type: 'SET'; payload: CalendarEvent[] }
   | { type: 'ADD'; payload: CalendarEvent }
   | { type: 'UPDATE'; payload: CalendarEvent }
   | { type: 'DELETE'; payload: string };
 
 function eventsReducer(state: CalendarEvent[], action: EventsAction): CalendarEvent[] {
   switch (action.type) {
+    case 'SET':
+      return action.payload;
     case 'ADD':
       return [...state, action.payload];
     case 'UPDATE':
@@ -38,7 +33,20 @@ function eventsReducer(state: CalendarEvent[], action: EventsAction): CalendarEv
 const App: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
-  const [events, dispatch] = useReducer(eventsReducer, initialEvents);
+  const [events, dispatch] = useReducer(eventsReducer, []);
+
+  React.useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/events');
+        const data = await response.json();
+        dispatch({ type: 'SET', payload: data.events });
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      }
+    };
+    fetchEvents();
+  }, []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [modalDate, setModalDate] = useState<Date | null>(null);
@@ -81,35 +89,54 @@ const App: React.FC = () => {
     setModalDate(null);
   }, []);
 
-  const handleSaveEvent = useCallback((event: Omit<CalendarEvent, 'id'> & { id?: string }) => {
+  const handleSaveEvent = useCallback(async (event: Omit<CalendarEvent, 'id'> & { id?: string }) => {
     if (event.id) {
       dispatch({ type: 'UPDATE', payload: event as CalendarEvent });
     } else {
-      dispatch({ type: 'ADD', payload: { ...event, id: Date.now().toString() } });
+      try {
+        const response = await fetch('http://localhost:3001/events', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(event),
+        });
+        const newEvent = await response.json();
+        dispatch({ type: 'ADD', payload: { ...event, id: newEvent.id.toString() } });
+      } catch (error) {
+        console.error('Error saving event:', error);
+      }
     }
     closeModal();
   }, [closeModal]);
 
-  const handleEventUpdate = useCallback((event: CalendarEvent) => {
-    const originalId = event.id.split('-')[0];
-    const originalEvent = events.find(e => e.id === originalId);
-
-    if (originalEvent && originalEvent.recurrence) {
-      // If a recurring event instance is dragged, update the start date and time of the whole series
-      const updatedSeries = {
-        ...originalEvent,
-        date: event.date,
-        startTime: event.startTime,
-        endTime: event.endTime,
-      };
-       dispatch({ type: 'UPDATE', payload: updatedSeries });
-    } else {
+  const handleEventUpdate = useCallback(async (event: CalendarEvent) => {
+    try {
+      const response = await fetch(`http://localhost:3001/events/${event.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(event),
+        }
+      );
+      await response.json();
       dispatch({ type: 'UPDATE', payload: event });
+    } catch (error) {
+      console.error('Error updating event:', error);
     }
-  }, [events]);
+  }, []);
 
-  const handleDeleteEvent = useCallback((id: string) => {
-    dispatch({ type: 'DELETE', payload: id });
+  const handleDeleteEvent = useCallback(async (id: string) => {
+    try {
+      await fetch(`http://localhost:3001/events/${id}`, {
+        method: 'DELETE',
+      });
+      dispatch({ type: 'DELETE', payload: id });
+    } catch (error) {
+      console.error('Error deleting event:', error);
+    }
     closeModal();
   }, [closeModal]);
   
