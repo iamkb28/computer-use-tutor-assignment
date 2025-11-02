@@ -1,0 +1,5 @@
+{
+  "name": "Google Calendar Clone",
+  "description": "A high-fidelity frontend clone of Google Calendar built with React and Tailwind CSS. It supports month, week, and day views, along with event creation, editing, and deletion.",
+  "requestFramePermissions": []
+}
