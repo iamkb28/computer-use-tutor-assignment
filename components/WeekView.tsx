@@ -1,15 +1,6 @@
 import React, { useState } from 'react';
-import { useCalendar } from '../hooks/useCalendar';
-import { CalendarEvent } from '../types';
-import { isSameDay, format, parseISO, getHours, getMinutes } from '../utils/dateUtils';
-
-interface WeekViewProps {
-  currentDate: Date;
-  events: CalendarEvent[];
-  onEventClick: (event: CalendarEvent) => void;
-  onCellClick: (date: Date) => void;
-  onEventUpdate: (event: CalendarEvent) => void;
-}
+import { useCalendar } from '../hooks/useCalendar.js';
+import { isSameDay, format, parseISO, getHours, getMinutes } from '../utils/dateUtils.js';
 
 const colorClasses = {
   red: { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-800' },
@@ -21,14 +12,14 @@ const colorClasses = {
 };
 
 
-const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
+const WeekView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
   const { weekDays } = useCalendar(currentDate, 'week');
   const today = new Date();
   const timeSlots = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
-  const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
+  const [draggedEvent, setDraggedEvent] = useState(null);
   const HOUR_HEIGHT = 48; // 48px per hour
 
-  const getEventPosition = (event: CalendarEvent) => {
+  const getEventPosition = (event) => {
     const [startHour, startMinute] = event.startTime.split(':').map(Number);
     const [endHour, endMinute] = event.endTime.split(':').map(Number);
     const top = (startHour + startMinute / 60) * HOUR_HEIGHT;
@@ -37,16 +28,16 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onEventClick, 
     return { top, height };
   };
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, event: CalendarEvent) => {
+  const handleDragStart = (e, event) => {
     e.dataTransfer.setData('eventId', event.id);
     setDraggedEvent(event);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, day: Date) => {
+  const handleDrop = (e, day) => {
     e.preventDefault();
     if (!draggedEvent) return;
 
@@ -68,7 +59,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onEventClick, 
 
     if (newEndHour > 24 || (newEndHour === 24 && newEndMinute > 0)) return;
 
-    const updatedEvent: CalendarEvent = {
+    const updatedEvent = {
       ...draggedEvent,
       date: format(day, 'yyyy-MM-dd'),
       startTime: `${String(newStartHour).padStart(2, '0')}:${String(newStartMinute).padStart(2, '0')}`,
