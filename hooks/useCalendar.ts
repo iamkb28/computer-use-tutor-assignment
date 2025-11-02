@@ -1,8 +1,7 @@
-
 import { useMemo } from 'react';
-import { getMonth, getYear } from '../utils/dateUtils';
+import { getMonth, getYear } from '../utils/dateUtils.js';
 
-export const useCalendar = (currentDate: Date, view: 'month' | 'week' | 'day') => {
+export const useCalendar = (currentDate, view) => {
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const monthData = useMemo(() => {
@@ -59,4 +58,3 @@ export const useCalendar = (currentDate: Date, view: 'month' | 'week' | 'day') =
   
   return { calendarWeeks: [], weekDays: [], daysOfWeek };
 };
-
