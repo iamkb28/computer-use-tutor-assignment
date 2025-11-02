@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import { CalendarEvent } from '../types';
-import { isSameDay, format, parseISO } from '../utils/dateUtils';
-
-interface DayViewProps {
-  currentDate: Date;
-  events: CalendarEvent[];
-  onEventClick: (event: CalendarEvent) => void;
-  onCellClick: (date: Date) => void;
-  onEventUpdate: (event: CalendarEvent) => void;
-}
+import { isSameDay, format, parseISO } from '../utils/dateUtils.js';
 
 const colorClasses = {
   red: { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-800' },
@@ -19,14 +10,14 @@ const colorClasses = {
   orange: { bg: 'bg-orange-100', border: 'border-orange-500', text: 'text-orange-800' },
 };
 
-const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
+const DayView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
   const today = new Date();
   const timeSlots = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
   const dayEvents = events.filter(e => isSameDay(parseISO(e.date), currentDate));
-  const [draggedEvent, setDraggedEvent] = useState<CalendarEvent | null>(null);
+  const [draggedEvent, setDraggedEvent] = useState(null);
   const HOUR_HEIGHT = 60; // 60px per hour
 
-  const getEventPosition = (event: CalendarEvent) => {
+  const getEventPosition = (event) => {
     const [startHour, startMinute] = event.startTime.split(':').map(Number);
     const [endHour, endMinute] = event.endTime.split(':').map(Number);
     const top = (startHour + startMinute / 60) * HOUR_HEIGHT;
@@ -35,16 +26,16 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
     return { top, height };
   };
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, event: CalendarEvent) => {
+  const handleDragStart = (e, event) => {
     e.dataTransfer.setData('eventId', event.id);
     setDraggedEvent(event);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e) => {
     e.preventDefault();
     if (!draggedEvent) return;
 
@@ -66,7 +57,7 @@ const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, on
     
     if (newEndHour > 24 || (newEndHour === 24 && newEndMinute > 0)) return;
 
-    const updatedEvent: CalendarEvent = {
+    const updatedEvent = {
       ...draggedEvent,
       date: format(currentDate, 'yyyy-MM-dd'),
       startTime: `${String(newStartHour).padStart(2, '0')}:${String(newStartMinute).padStart(2, '0')}`,
