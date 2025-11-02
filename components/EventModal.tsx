@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
-import { CalendarEvent } from '../types';
-import { format } from '../utils/dateUtils';
+import React, { useState, useEffect, useMemo } from 'react';
+import { CalendarEvent, RecurrenceFrequency } from '../types';
+import { format, parseISO } from '../utils/dateUtils';
 
 interface EventModalProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, onDele
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('11:00');
   const [color, setColor] = useState<CalendarEvent['color']>('blue');
+  const [recurrence, setRecurrence] = useState<RecurrenceFrequency>('none');
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, onDele
       setStartTime(event.startTime);
       setEndTime(event.endTime);
       setColor(event.color);
+      setRecurrence(event.recurrence || 'none');
     } else if (date) {
       setTitle('');
       setEventDate(format(date, 'yyyy-MM-dd'));
@@ -37,8 +39,19 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, onDele
       setStartTime(`${startHour}:00`);
       setEndTime(`${endHour}:00`);
       setColor('blue');
+      setRecurrence('none');
     }
   }, [event, date, isOpen]);
+
+  const selectedDayOfWeek = useMemo(() => {
+    if (!eventDate) return '';
+    try {
+      const date = parseISO(eventDate);
+      return format(date, 'EEEE');
+    } catch (e) {
+      return '';
+    }
+  }, [eventDate]);
 
   const handleSave = () => {
     onSave({
@@ -48,6 +61,7 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, onDele
       startTime,
       endTime,
       color,
+      recurrence: recurrence === 'none' ? undefined : recurrence,
     });
   };
 
@@ -94,6 +108,19 @@ const EventModal: React.FC<EventModalProps> = ({ isOpen, onClose, onSave, onDele
               onChange={(e) => setEndTime(e.target.value)}
               className="border border-gray-300 rounded-md p-2"
             />
+          </div>
+          <div className="flex items-center space-x-4">
+             <select
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value as RecurrenceFrequency)}
+              className="border border-gray-300 rounded-md p-2 w-full"
+            >
+              <option value="none">Does not repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly on {selectedDayOfWeek}</option>
+              <option value="monthly">Monthly</option>
+              <option value="annually">Annually</option>
+            </select>
           </div>
           <div className="flex items-center space-x-2">
             <div className="relative">
