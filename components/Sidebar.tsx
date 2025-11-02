@@ -1,14 +1,7 @@
-
 import React from 'react';
-import MiniCalendar from './MiniCalendar';
+import MiniCalendar from './MiniCalendar.js';
 
-interface SidebarProps {
-  currentDate: Date;
-  onDateChange: (date: Date) => void;
-  onNewEventClick: () => void;
-}
-
-const Sidebar: React.FC<SidebarProps> = ({ currentDate, onDateChange, onNewEventClick }) => {
+const Sidebar = ({ currentDate, onDateChange, onNewEventClick }) => {
   return (
     <aside className="w-64 p-4 border-r border-gray-200 flex flex-col space-y-4">
       <button onClick={onNewEventClick} className="flex items-center justify-center bg-white border border-gray-200 rounded-full shadow-md hover:shadow-lg transition-shadow duration-200 p-3 w-max">
