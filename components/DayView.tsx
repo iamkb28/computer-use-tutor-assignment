@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { isSameDay, format, parseISO } from '../utils/dateUtils.js';
+import { CalendarEvent } from '../types';
+import { isSameDay, format, parseISO } from '../utils/dateUtils';
+
+interface DayViewProps {
+  currentDate: Date;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onCellClick: (date: Date) => void;
+  onEventUpdate: (event: CalendarEvent) => void;
+}
 
 const colorClasses = {
   red: { bg: 'bg-red-100', border: 'border-red-500', text: 'text-red-800' },
@@ -10,14 +19,14 @@ const colorClasses = {
   orange: { bg: 'bg-orange-100', border: 'border-orange-500', text: 'text-orange-800' },
 };
 
-const DayView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
+const DayView: React.FC<DayViewProps> = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate }) => {
   const today = new Date();
   const timeSlots = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
   const dayEvents = events.filter(e => isSameDay(parseISO(e.date), currentDate));
-  const [draggedEvent, setDraggedEvent] = useState(null);
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   const HOUR_HEIGHT = 60; // 60px per hour
 
-  const getEventPosition = (event) => {
+  const getEventPosition = (event: CalendarEvent) => {
     const [startHour, startMinute] = event.startTime.split(':').map(Number);
     const [endHour, endMinute] = event.endTime.split(':').map(Number);
     const top = (startHour + startMinute / 60) * HOUR_HEIGHT;
@@ -26,50 +35,67 @@ const DayView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate
     return { top, height };
   };
 
-  const handleDragStart = (e, event) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, event: CalendarEvent) => {
     e.dataTransfer.setData('eventId', event.id);
-    setDraggedEvent(event);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    e.dataTransfer.setData('offsetY', String(offsetY));
+    setDraggedEventId(event.id);
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (!draggedEvent) return;
+    const eventId = e.dataTransfer.getData('eventId');
+    const offsetY = parseFloat(e.dataTransfer.getData('offsetY')) || 0;
 
-    const [startH, startM] = draggedEvent.startTime.split(':').map(Number);
-    const [endH, endM] = draggedEvent.endTime.split(':').map(Number);
+    const eventToUpdate = events.find(ev => ev.id === eventId);
+    if (!eventToUpdate) {
+        setDraggedEventId(null);
+        return;
+    }
+
+    const [startH, startM] = eventToUpdate.startTime.split(':').map(Number);
+    const [endH, endM] = eventToUpdate.endTime.split(':').map(Number);
     const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
 
     const rect = e.currentTarget.getBoundingClientRect();
     const dropY = e.clientY - rect.top;
 
-    const totalMinutes = (dropY / HOUR_HEIGHT) * 60;
+    // The initial click offset should not influence the final position,
+    // only the cursor's absolute position relative to the drop container.
+    const correctedDropY = Math.max(0, dropY - offsetY);
+
+    const totalMinutes = (correctedDropY / HOUR_HEIGHT) * 60;
     const snappedMinutes = Math.round(totalMinutes / 15) * 15;
     const newStartHour = Math.floor(snappedMinutes / 60);
     const newStartMinute = snappedMinutes % 60;
-
+    
     const newEndTotalMinutes = snappedMinutes + durationMinutes;
     const newEndHour = Math.floor(newEndTotalMinutes / 60);
     const newEndMinute = newEndTotalMinutes % 60;
     
-    if (newEndHour > 24 || (newEndHour === 24 && newEndMinute > 0)) return;
+    if (newEndHour > 24 || (newEndHour === 24 && newEndMinute > 0)) {
+        setDraggedEventId(null);
+        return;
+    }
 
-    const updatedEvent = {
-      ...draggedEvent,
+    const updatedEvent: CalendarEvent = {
+      ...eventToUpdate,
       date: format(currentDate, 'yyyy-MM-dd'),
       startTime: `${String(newStartHour).padStart(2, '0')}:${String(newStartMinute).padStart(2, '0')}`,
       endTime: `${String(newEndHour).padStart(2, '0')}:${String(newEndMinute).padStart(2, '0')}`,
     };
     
     onEventUpdate(updatedEvent);
-    setDraggedEvent(null);
+    setDraggedEventId(null);
   };
 
   const handleDragEnd = () => {
-    setDraggedEvent(null);
+    setDraggedEventId(null);
   };
 
   return (
@@ -77,8 +103,13 @@ const DayView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate
       <div className="flex-grow grid grid-cols-[auto_1fr]">
         {/* Time column */}
         <div className="w-16">
-          {timeSlots.map(time => (
-            <div key={time} className="h-[60px] text-right pr-2 text-xs text-gray-400 border-r border-gray-200 relative -top-2">
+          {timeSlots.map((time, index) => (
+            <div
+              key={time}
+              className={`h-[60px] text-right pr-2 text-xs text-gray-400 border-r border-gray-200 ${
+                index > 0 ? 'relative -top-2' : ''
+              }`}
+            >
               {time}
             </div>
           ))}
@@ -108,7 +139,7 @@ const DayView = ({ currentDate, events, onEventClick, onCellClick, onEventUpdate
                 onDragStart={(e) => handleDragStart(e, event)}
                 onDragEnd={handleDragEnd}
                 onClick={() => onEventClick(event)}
-                className={`absolute left-2 right-2 p-2 rounded border-l-4 ${draggedEvent?.id === event.id ? 'opacity-50 cursor-grabbing' : 'cursor-pointer'} ${color.bg} ${color.border} ${color.text}`}
+                className={`absolute left-2 right-2 p-2 rounded border-l-4 ${draggedEventId === event.id ? 'opacity-50 cursor-grabbing' : 'cursor-pointer'} ${color.bg} ${color.border} ${color.text}`}
                 style={{ top: `${top}px`, height: `${height}px`, zIndex: 10 }}
               >
                 <p className="font-semibold">{event.title}</p>
