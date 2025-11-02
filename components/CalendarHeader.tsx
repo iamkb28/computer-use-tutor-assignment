@@ -1,7 +1,18 @@
 import React from 'react';
-import { format } from '../utils/dateUtils.js';
+import { CalendarView } from '../types';
+import { format } from '../utils/dateUtils';
 
-const CalendarHeader = ({
+interface CalendarHeaderProps {
+  currentDate: Date;
+  view: CalendarView;
+  onViewChange: (view: CalendarView) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onToday: () => void;
+  onToggleSidebar: () => void;
+}
+
+const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   currentDate,
   view,
   onViewChange,
@@ -59,7 +70,7 @@ const CalendarHeader = ({
       <div className="relative">
         <select
           value={view}
-          onChange={(e) => onViewChange(e.target.value)}
+          onChange={(e) => onViewChange(e.target.value as CalendarView)}
           className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 appearance-none bg-white pr-8"
         >
           <option value="day">Day</option>
