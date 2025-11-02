@@ -1,8 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { useCalendar } from '../hooks/useCalendar.js';
-import { format, isSameDay, getMonth, getYear, addMonths, subMonths } from '../utils/dateUtils.js';
 
-const MiniCalendar = ({ selectedDate, onDateSelect }) => {
+import React, { useState, useMemo } from 'react';
+import { useCalendar } from '../hooks/useCalendar';
+import { format, isSameDay, getMonth, getYear, addMonths, subMonths } from '../utils/dateUtils';
+
+interface MiniCalendarProps {
+  selectedDate: Date;
+  onDateSelect: (date: Date) => void;
+}
+
+const MiniCalendar: React.FC<MiniCalendarProps> = ({ selectedDate, onDateSelect }) => {
   const [displayDate, setDisplayDate] = useState(selectedDate);
   const { calendarWeeks, daysOfWeek } = useCalendar(displayDate, 'month');
 
