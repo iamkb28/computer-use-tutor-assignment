@@ -41,8 +41,6 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
     }
   };
 
-  const calendarIconDataUri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAACrElEQVR42u2Zz0tUYRTHP/85O64jQk1EhBDRRkVRFAlpEBsttFDQSkk3LbWoqIs2Uf/An6CVQpCCLrcFIdpFhGghIlqEih5vo3tmFnrwztxz3o9z5s75A8+559573u8P73u/dwBw/pHDwGDAATAS2AJ2gAPgG/gEnAGPCl4c4aPAAXAIeA20gBtgl6b6S7ADfEzw7g74C7gCTgN9YDEo9sV3gDHgQcCXDvAJfAJeAFeAn0CBL/Aq8CfwDPgBfPZGHwY+BZ4AATYBHwPvA1uB/yABnsEHoA1YBvwH3AGfge+A/2ACjsEfoG0L4SfwGvgE/AJuAy+Bl+B74BvwnY9zC3wFvCzwDbgFfAbeB/4I/A2ci5wEXgIPA08Cb8GXgY/B14D/gL3A/sCpwL7AbcD+z/7Av8GRwO/A/uAswO/Ac4D/gZOA3wGnAb8DlwO/A+8D/gdfBv4OvA58Hfga+DPwNfBj4MvAl4GXgZeBl4F/gEcBf4EHgUeAnwGPAU8DnwJPAb8BrgG/Aa8D/wFfAj8BvwZfA78Bvwa/AV8GvgY+DV4GvgZeBk4DPgZOA54EngI+A+4B1gDngN/BJ4CfgTeA5zC3gV8Db0D4C3gL+A2g6u4r/A5sAmL/An8LPA2sBLoBO8FXgK/AE2Aj8ADgL8DtwF+AB0BfwA/AFwF/AH8AvwBfAX8AfwD/AD8AP8Dfgv+ANwD/AX8D/gS+Af4K/AR8A/wF/Br4Bvgn+A74BvgG+Cr4CvgK+Cf4A/gp+An4E/gp+BP4KfgT+DP4C/gL+BX4C/gX+C34Lfgd+F34Hfg9+A74Hvh+Ab/DfwJ3D/0P1A/8AnwJ/AF8BfwDfA/8G1wbY2+Bm4H/gI+Ab4L/gR+B64A7gf9vT8C/B74M/AZ8/gjwKPAI8GvgeuAp8A7wD/AF8Engk8DTwHPAU8DLwGXgS8CnwB/A/cAZ/AM4O8uACvAbcD/wMHA7cA/wGPAw8D/b05+Am4A/ga+Av4AfgV+B74Cfg/8Cvwa/Cb8DvwOfBj8BvwM/Ab8DvwY/A78D/wA/Bn8D3wA/AT8AvgM+BP4EfgL+BD4E/gb+A/4B/gf0P8A3s/4/3f+B8j+A8A/kP4Dwq+fzP/B5f/AdcAAAAASUVORK5CYII=";
-
   return (
     <header className="flex items-center justify-between p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
       <div className="flex items-center">
@@ -51,7 +49,6 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
           </svg>
         </button>
-        <img src={calendarIconDataUri} alt="Calendar Logo" className="w-8 h-8 ml-2" />
         <span className="text-xl text-gray-500 ml-2">Calendar</span>
         <button onClick={onToday} className="ml-6 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50">
           Today
